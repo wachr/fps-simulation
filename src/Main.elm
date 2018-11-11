@@ -119,7 +119,12 @@ drawGridPlayer { facing } =
                     Svg.transform "rotate(270 150 150)"
     in
     styled div
-        []
+        [ Css.width (pct 75)
+        , Css.height (pct 75)
+        , Css.justifyContent Css.center
+        , Css.alignItems Css.center
+        , Css.displayFlex
+        ]
         [ Html.class "grid-player" ]
         [ Svg.styled svg
             []
