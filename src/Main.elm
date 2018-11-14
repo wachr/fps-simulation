@@ -4,8 +4,9 @@ import Browser
 import Css exposing (auto, calc, em, minus, pct, px, rem, vh, vw, zero)
 import Css.Global exposing (body, global)
 import Html
-import Html.Styled exposing (Html, div, h1, hr, styled, text, toUnstyled)
+import Html.Styled exposing (Html, button, div, fromUnstyled, h1, hr, styled, text, toUnstyled)
 import Html.Styled.Attributes as Html exposing (id)
+import Html.Styled.Events exposing (onClick)
 import List
 import Maybe exposing (withDefault)
 import Svg.Styled as Svg exposing (Svg, svg)
@@ -27,6 +28,11 @@ type Facing
     | South
 
 
+type Msg
+    = GridIncrement
+    | GridDecrement
+
+
 type alias Player =
     { location : ( Int, Int ), facing : Facing }
 
@@ -44,12 +50,17 @@ init =
     }
 
 
-update : msg -> GameState -> GameState
+update : Msg -> GameState -> GameState
 update msg gameState =
-    gameState
+    case msg of
+        GridIncrement ->
+            { gameState | gridSize = gameState.gridSize + 1 }
+
+        GridDecrement ->
+            { gameState | gridSize = gameState.gridSize - 1 }
 
 
-view : GameState -> Html msg
+view : GameState -> Html Msg
 view gameState =
     styled div
         [ Css.height (vh 95) ]
@@ -76,6 +87,7 @@ view gameState =
                 []
                 [ text "Control panel"
                 , hr [] []
+                , drawControlPanelFromGameState gameState
                 ]
             ]
         , styled div
@@ -98,6 +110,20 @@ view gameState =
                 , drawGridFromGameState gameState
                 ]
             ]
+        ]
+
+
+drawControlPanelFromGameState : GameState -> Html Msg
+drawControlPanelFromGameState { gridSize } =
+    styled div
+        [ Css.displayFlex
+        , Css.flexDirection Css.row
+        , Css.justifyContent Css.center
+        ]
+        []
+        [ styled button [] [ onClick GridDecrement ] [ text "-" ]
+        , styled div [ Css.margin2 zero (em 1) ] [] [ text (String.fromInt gridSize) ]
+        , styled button [] [ onClick GridIncrement ] [ text "+" ]
         ]
 
 
