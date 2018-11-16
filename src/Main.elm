@@ -40,13 +40,15 @@ type alias Player =
 type alias GameState =
     { gridSize : Int
     , players : List Player
+    , selectedPlayerIndex : Int
     }
 
 
 init : GameState
 init =
-    { gridSize = 10
-    , players = [ Player ( 4, 3 ) West, Player ( 8, 6 ) North ]
+    { gridSize = 3
+    , players = [ Player ( 1, 1 ) West, Player ( 3, 2 ) North ]
+    , selectedPlayerIndex = 0
     }
 
 
@@ -71,50 +73,74 @@ view gameState =
                 , Css.backgroundSize (pct 100)
                 ]
             ]
-        , styled div
-            [ Css.border2 (Css.px 1) Css.solid
+        , drawControlPanelView gameState
+        , drawSimulationView gameState
+        ]
+
+
+drawControlPanelView : GameState -> Html Msg
+drawControlPanelView gameState =
+    styled div
+        [ Css.border2 (Css.px 1) Css.solid
+        , Css.boxSizing Css.borderBox
+        , Css.padding (Css.px 10)
+        , Css.height (pct 100)
+        , Css.float Css.right
+        , Css.width <| calc (pct 30) minus (em 1)
+        ]
+        [ id "control-panel" ]
+        [ styled h1
+            [ Css.margin zero
+            , Css.textAlign Css.center
+            ]
+            []
+            [ text "Control panel"
+            , hr [] []
+            , drawControlPanelFromGameState gameState
+            ]
+        ]
+
+
+drawSimulationView : GameState -> Html Msg
+drawSimulationView gameState =
+    styled div
+        [ Css.border2 (Css.px 1) Css.solid
+        , Css.boxSizing Css.borderBox
+        , Css.padding (Css.px 10)
+        , Css.height (pct 100)
+        , Css.float Css.left
+        , Css.width (pct 70)
+        ]
+        [ id "simulation-frame" ]
+        [ styled h1
+            [ Css.margin zero
+            , Css.textAlign Css.center
             , Css.boxSizing Css.borderBox
-            , Css.padding (Css.px 10)
-            , Css.height (pct 100)
-            , Css.float Css.right
-            , Css.width <| calc (pct 30) minus (em 1)
             ]
-            [ id "control-panel" ]
-            [ styled h1
-                [ Css.margin zero
-                , Css.textAlign Css.center
-                ]
-                []
-                [ text "Control panel"
-                , hr [] []
-                , drawControlPanelFromGameState gameState
-                ]
-            ]
-        , styled div
-            [ Css.border2 (Css.px 1) Css.solid
-            , Css.boxSizing Css.borderBox
-            , Css.padding (Css.px 10)
-            , Css.height (pct 100)
-            , Css.float Css.left
-            , Css.width (pct 70)
-            ]
-            [ id "simulation-frame" ]
-            [ styled h1
-                [ Css.margin zero
-                , Css.textAlign Css.center
-                , Css.boxSizing Css.borderBox
-                ]
-                []
-                [ text "Simulation pane"
-                , hr [] []
-                , drawGridFromGameState gameState
-                ]
+            []
+            [ text "Simulation pane"
+            , hr [] []
+            , drawGridFromGameState gameState
             ]
         ]
 
 
 drawControlPanelFromGameState : GameState -> Html Msg
-drawControlPanelFromGameState { gridSize } =
+drawControlPanelFromGameState gameState =
+    styled div
+        [ Css.displayFlex
+        , Css.flexDirection Css.column
+        , Css.justifyContent Css.center
+        , Css.alignItems Css.stretch
+        ]
+        []
+        [ drawGridSizeControl gameState
+        , drawPlayerLocationControl gameState
+        ]
+
+
+drawGridSizeControl : GameState -> Html Msg
+drawGridSizeControl { gridSize } =
     styled div
         [ Css.displayFlex
         , Css.flexDirection Css.row
@@ -127,8 +153,29 @@ drawControlPanelFromGameState { gridSize } =
         ]
 
 
-drawGridPlayer : Player -> Html msg
-drawGridPlayer { facing } =
+drawPlayerLocationControl : GameState -> Html Msg
+drawPlayerLocationControl { players, selectedPlayerIndex } =
+    styled div
+        [ Css.displayFlex
+        , Css.flexDirection Css.row
+        , Css.justifyContent Css.center
+        ]
+        []
+        [ List.drop selectedPlayerIndex players
+            |> List.head
+            |> Maybe.map .location
+            |> Maybe.map (Tuple.mapFirst String.fromInt)
+            |> Maybe.map (Tuple.mapSecond String.fromInt)
+            |> Maybe.map (\( a, b ) -> String.join " " [ "(", a, ",", b, ")" ])
+            |> Maybe.map text
+            |> Maybe.map List.singleton
+            |> Maybe.withDefault []
+            >> styled div [] []
+        ]
+
+
+drawGridPlayer : Bool -> Player -> Html msg
+drawGridPlayer selectedPlayer { facing } =
     let
         transformationForFacing =
             case facing of
@@ -143,6 +190,17 @@ drawGridPlayer { facing } =
 
                 West ->
                     Svg.transform "rotate(270 150 150)"
+
+        highlightPlayerIfSelected =
+            if selectedPlayer then
+                [ Svg.stroke "Black"
+                , Svg.strokeWidth "10px"
+                , Svg.strokeDasharray "160,160"
+                , Svg.strokeDashoffset "90"
+                ]
+
+            else
+                []
     in
     styled div
         [ Css.width (pct 75)
@@ -154,13 +212,16 @@ drawGridPlayer { facing } =
         [ Html.class "grid-player" ]
         [ Svg.styled svg
             []
-            [ Svg.viewBox "0 0 300 300" ]
+            [ Svg.viewBox "-5 -5 310 310" ]
             [ Svg.circle
-                [ Svg.cx "150"
-                , Svg.cy "150"
-                , Svg.r "150"
-                , Svg.fill "ForestGreen"
-                ]
+                (List.append
+                    [ Svg.cx "150"
+                    , Svg.cy "150"
+                    , Svg.r "150"
+                    , Svg.fill "ForestGreen"
+                    ]
+                    highlightPlayerIfSelected
+                )
                 []
             , Svg.polygon
                 [ Svg.height "300"
@@ -174,29 +235,20 @@ drawGridPlayer { facing } =
         ]
 
 
-drawGridCell : ( Int, Int ) -> List Player -> Html msg
-drawGridCell coordinate players =
-    let
-        playerDiv : Maybe (Html msg)
-        playerDiv =
-            List.filter ((==) coordinate << .location) players
-                |> List.head
-                >> Maybe.map drawGridPlayer
-    in
-    styled div
-        [ gridCell ]
-        [ Html.class "grid-cell" ]
-    <|
-        withDefault
-            []
-        <|
-            Maybe.map
-                List.singleton
-                playerDiv
+drawGridCell : ( Int, Int ) -> Bool -> List Player -> Html msg
+drawGridCell coordinate selectedPlayer players =
+    List.filter ((==) coordinate << .location) players
+        |> List.head
+        |> Maybe.map (drawGridPlayer selectedPlayer)
+        |> Maybe.map List.singleton
+        |> withDefault []
+        |> styled div
+            [ gridCell ]
+            [ Html.class "grid-cell" ]
 
 
 drawGridRowFromGameState : GameState -> Int -> Html msg
-drawGridRowFromGameState { gridSize, players } rowIndex =
+drawGridRowFromGameState { gridSize, selectedPlayerIndex, players } rowIndex =
     List.range 1 gridSize
         |> List.map
             (\columnIndex ->
@@ -206,7 +258,14 @@ drawGridRowFromGameState { gridSize, players } rowIndex =
                             << Tuple.second
                             << .location
                         )
-                    |> drawGridCell ( columnIndex, rowIndex )
+                    |> drawGridCell
+                        ( columnIndex, rowIndex )
+                        (List.drop selectedPlayerIndex players
+                            |> List.head
+                            |> Maybe.map .location
+                            |> Maybe.map ((==) ( columnIndex, rowIndex ))
+                            |> withDefault False
+                        )
             )
         |> styled div
             [ gridRow ]
