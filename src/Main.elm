@@ -4,11 +4,11 @@ import Browser
 import Css exposing (auto, calc, em, minus, pct, px, rem, vh, vw, zero)
 import Css.Global exposing (body, global)
 import Html
-import Html.Styled exposing (Html, button, div, fromUnstyled, h1, hr, styled, text, toUnstyled)
+import Html.Styled exposing (Html, br, button, div, fromUnstyled, h1, hr, span, styled, text, toUnstyled)
 import Html.Styled.Attributes as Html exposing (id)
 import Html.Styled.Events exposing (onClick)
 import List
-import Maybe exposing (withDefault)
+import Maybe exposing (Maybe(..), withDefault)
 import Svg.Styled as Svg exposing (Svg, svg)
 import Svg.Styled.Attributes as Svg
 
@@ -28,11 +28,6 @@ type Facing
     | South
 
 
-type Msg
-    = GridIncrement
-    | GridDecrement
-
-
 type alias Player =
     { location : ( Int, Int ), facing : Facing }
 
@@ -40,7 +35,7 @@ type alias Player =
 type alias GameState =
     { gridSize : Int
     , players : List Player
-    , selectedPlayerIndex : Int
+    , selectedPlayerIndex : Maybe Int
     }
 
 
@@ -48,8 +43,15 @@ init : GameState
 init =
     { gridSize = 3
     , players = [ Player ( 1, 1 ) West, Player ( 3, 2 ) North ]
-    , selectedPlayerIndex = 0
+    , selectedPlayerIndex = Just 0
     }
+
+
+type Msg
+    = GridIncrement
+    | GridDecrement
+    | SelectPlayer Int
+    | DeselectPlayer
 
 
 update : Msg -> GameState -> GameState
@@ -60,6 +62,12 @@ update msg gameState =
 
         GridDecrement ->
             { gameState | gridSize = gameState.gridSize - 1 }
+
+        SelectPlayer newIndex ->
+            { gameState | selectedPlayerIndex = Just newIndex }
+
+        DeselectPlayer ->
+            { gameState | selectedPlayerIndex = Nothing }
 
 
 view : GameState -> Html Msg
@@ -135,7 +143,7 @@ drawControlPanelFromGameState gameState =
         ]
         []
         [ drawGridSizeControl gameState
-        , drawPlayerLocationControl gameState
+        , drawPlayersControl gameState
         ]
 
 
@@ -143,38 +151,78 @@ drawGridSizeControl : GameState -> Html Msg
 drawGridSizeControl { gridSize } =
     styled div
         [ Css.displayFlex
-        , Css.flexDirection Css.row
+        , Css.flexDirection Css.column
         , Css.justifyContent Css.center
+        , Css.alignItems Css.center
+        , Css.fontSize (Css.pt 16)
         ]
         []
-        [ styled button [] [ onClick GridDecrement ] [ text "-" ]
-        , styled div [ Css.margin2 zero (em 1) ] [] [ text (String.fromInt gridSize) ]
-        , styled button [] [ onClick GridIncrement ] [ text "+" ]
+        [ text "Grid size:"
+        , styled div
+            [ Css.displayFlex
+            , Css.flexDirection Css.row
+            , Css.justifyContent Css.center
+            ]
+            []
+            [ styled button [] [ onClick GridDecrement ] [ text "-" ]
+            , styled div [ Css.margin2 zero (em 1) ] [] [ text (String.fromInt gridSize) ]
+            , styled button [] [ onClick GridIncrement ] [ text "+" ]
+            ]
         ]
 
 
-drawPlayerLocationControl : GameState -> Html Msg
-drawPlayerLocationControl { players, selectedPlayerIndex } =
+drawPlayersControl : GameState -> Html Msg
+drawPlayersControl { players, selectedPlayerIndex } =
     styled div
         [ Css.displayFlex
-        , Css.flexDirection Css.row
+        , Css.flexDirection Css.column
         , Css.justifyContent Css.center
+        , Css.alignItems Css.center
+        , Css.fontSize (Css.pt 16)
         ]
         []
-        [ List.drop selectedPlayerIndex players
-            |> List.head
-            |> Maybe.map .location
-            |> Maybe.map (Tuple.mapFirst String.fromInt)
-            |> Maybe.map (Tuple.mapSecond String.fromInt)
-            |> Maybe.map (\( a, b ) -> String.join " " [ "(", a, ",", b, ")" ])
-            |> Maybe.map text
-            |> Maybe.map List.singleton
-            |> Maybe.withDefault []
-            >> styled div [] []
+        [ text "Players:"
+        , styled div
+            [ Css.displayFlex
+            , Css.flexDirection Css.column
+            , Css.justifyContent Css.flexStart
+            ]
+            []
+          <|
+            List.intersperse (styled br [] [] []) <|
+                List.indexedMap
+                    (\currentIndex player ->
+                        String.join " "
+                            [ "Player"
+                            , String.fromInt <| currentIndex + 1
+                            , ":"
+                            , "("
+                            , String.fromInt << Tuple.first <| player.location
+                            , ","
+                            , String.fromInt << Tuple.second <| player.location
+                            , ")"
+                            ]
+                            |> text
+                            |> List.singleton
+                            |> styled span
+                                (selectedPlayerIndex
+                                    |> Maybe.andThen (maybeFilter ((==) currentIndex))
+                                    |> Maybe.map (\_ -> [ Css.property "background-color" "Gold" ])
+                                    |> withDefault []
+                                )
+                                (selectedPlayerIndex
+                                    |> Maybe.andThen (maybeFilter ((==) currentIndex))
+                                    |> Maybe.map (\_ -> DeselectPlayer)
+                                    |> withDefault (SelectPlayer currentIndex)
+                                    |> onClick
+                                    |> List.singleton
+                                )
+                    )
+                    players
         ]
 
 
-drawGridPlayer : Bool -> Player -> Html msg
+drawGridPlayer : Bool -> Player -> Html Msg
 drawGridPlayer selectedPlayer { facing } =
     let
         transformationForFacing =
@@ -195,8 +243,8 @@ drawGridPlayer selectedPlayer { facing } =
             if selectedPlayer then
                 [ Svg.stroke "Black"
                 , Svg.strokeWidth "10px"
-                , Svg.strokeDasharray "160,160"
-                , Svg.strokeDashoffset "90"
+                , Svg.strokeDasharray "157,157"
+                , Svg.strokeDashoffset "79"
                 ]
 
             else
@@ -235,7 +283,7 @@ drawGridPlayer selectedPlayer { facing } =
         ]
 
 
-drawGridCell : ( Int, Int ) -> Bool -> List Player -> Html msg
+drawGridCell : ( Int, Int ) -> Bool -> List Player -> Html Msg
 drawGridCell coordinate selectedPlayer players =
     List.filter ((==) coordinate << .location) players
         |> List.head
@@ -247,7 +295,7 @@ drawGridCell coordinate selectedPlayer players =
             [ Html.class "grid-cell" ]
 
 
-drawGridRowFromGameState : GameState -> Int -> Html msg
+drawGridRowFromGameState : GameState -> Int -> Html Msg
 drawGridRowFromGameState { gridSize, selectedPlayerIndex, players } rowIndex =
     List.range 1 gridSize
         |> List.map
@@ -260,8 +308,9 @@ drawGridRowFromGameState { gridSize, selectedPlayerIndex, players } rowIndex =
                         )
                     |> drawGridCell
                         ( columnIndex, rowIndex )
-                        (List.drop selectedPlayerIndex players
-                            |> List.head
+                        (selectedPlayerIndex
+                            |> Maybe.map (\index -> List.drop index players)
+                            |> Maybe.andThen List.head
                             |> Maybe.map .location
                             |> Maybe.map ((==) ( columnIndex, rowIndex ))
                             |> withDefault False
@@ -272,7 +321,7 @@ drawGridRowFromGameState { gridSize, selectedPlayerIndex, players } rowIndex =
             [ Html.class "grid-row" ]
 
 
-drawGridFromGameState : GameState -> Html msg
+drawGridFromGameState : GameState -> Html Msg
 drawGridFromGameState gameState =
     List.range 1 gameState.gridSize
         |> List.map (drawGridRowFromGameState gameState)
@@ -318,3 +367,12 @@ gridCell =
 
 gridCellBoundary =
     rem 0.1
+
+
+maybeFilter : (a -> Bool) -> a -> Maybe a
+maybeFilter predicate operand =
+    if predicate operand then
+        Just operand
+
+    else
+        Nothing
