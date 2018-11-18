@@ -3,6 +3,7 @@ module FpsSimulation exposing (main, view)
 import Browser
 import Css exposing (auto, calc, em, minus, pct, px, rem, vh, vw, zero)
 import Css.Global exposing (body, global)
+import Debug
 import Html
 import Html.Styled exposing (Html, br, button, div, fromUnstyled, h1, hr, span, styled, text, toUnstyled)
 import Html.Styled.Attributes as Html exposing (id)
@@ -29,21 +30,26 @@ type Facing
 
 
 type alias Player =
-    { location : ( Int, Int ), facing : Facing }
+    { location : ( Int, Int ), facing : Facing, identifier : Int }
 
 
 type alias GameState =
     { gridSize : Int
     , players : List Player
-    , selectedPlayerIndex : Maybe Int
+    , selectedPlayerIdentifier : Maybe Int
     }
+
+
+makePlayer : ( Int, Int ) -> Facing -> List Player -> List Player
+makePlayer location facing players =
+    Player location facing (1 + List.length players) :: players
 
 
 init : GameState
 init =
     { gridSize = 3
-    , players = [ Player ( 1, 1 ) West, Player ( 3, 2 ) North ]
-    , selectedPlayerIndex = Just 0
+    , players = makePlayer ( 1, 1 ) West <| makePlayer ( 3, 2 ) North []
+    , selectedPlayerIdentifier = Nothing
     }
 
 
@@ -63,11 +69,11 @@ update msg gameState =
         GridDecrement ->
             { gameState | gridSize = gameState.gridSize - 1 }
 
-        SelectPlayer newIndex ->
-            { gameState | selectedPlayerIndex = Just newIndex }
+        SelectPlayer identifier ->
+            { gameState | selectedPlayerIdentifier = Just identifier }
 
         DeselectPlayer ->
-            { gameState | selectedPlayerIndex = Nothing }
+            { gameState | selectedPlayerIdentifier = Nothing }
 
 
 view : GameState -> Html Msg
@@ -172,7 +178,7 @@ drawGridSizeControl { gridSize } =
 
 
 drawPlayersControl : GameState -> Html Msg
-drawPlayersControl { players, selectedPlayerIndex } =
+drawPlayersControl { players, selectedPlayerIdentifier } =
     styled div
         [ Css.displayFlex
         , Css.flexDirection Css.column
@@ -190,11 +196,11 @@ drawPlayersControl { players, selectedPlayerIndex } =
             []
           <|
             List.intersperse (styled br [] [] []) <|
-                List.indexedMap
-                    (\currentIndex player ->
+                List.map
+                    (\player ->
                         String.join " "
                             [ "Player"
-                            , String.fromInt <| currentIndex + 1
+                            , String.fromInt <| player.identifier
                             , ":"
                             , "("
                             , String.fromInt << Tuple.first <| player.location
@@ -205,25 +211,25 @@ drawPlayersControl { players, selectedPlayerIndex } =
                             |> text
                             |> List.singleton
                             |> styled span
-                                (selectedPlayerIndex
-                                    |> Maybe.andThen (maybeFilter ((==) currentIndex))
+                                (selectedPlayerIdentifier
+                                    |> Maybe.andThen (maybeFilter ((==) player.identifier))
                                     |> Maybe.map (\_ -> [ Css.property "background-color" "Gold" ])
                                     |> withDefault []
                                 )
-                                (selectedPlayerIndex
-                                    |> Maybe.andThen (maybeFilter ((==) currentIndex))
+                                (selectedPlayerIdentifier
+                                    |> Maybe.andThen (maybeFilter ((==) player.identifier))
                                     |> Maybe.map (\_ -> DeselectPlayer)
-                                    |> withDefault (SelectPlayer currentIndex)
+                                    |> withDefault (SelectPlayer player.identifier)
                                     |> onClick
                                     |> List.singleton
                                 )
                     )
-                    players
+                    (List.sortBy .identifier players)
         ]
 
 
 drawGridPlayer : Bool -> Player -> Html Msg
-drawGridPlayer selectedPlayer { facing } =
+drawGridPlayer selectedPlayer { facing, identifier } =
     let
         transformationForFacing =
             case facing of
@@ -257,7 +263,14 @@ drawGridPlayer selectedPlayer { facing } =
         , Css.alignItems Css.center
         , Css.displayFlex
         ]
-        [ Html.class "grid-player" ]
+        [ Html.class "grid-player"
+        , onClick <|
+            if selectedPlayer then
+                DeselectPlayer
+
+            else
+                SelectPlayer identifier
+        ]
         [ Svg.styled svg
             []
             [ Svg.viewBox "-5 -5 310 310" ]
@@ -296,7 +309,7 @@ drawGridCell coordinate selectedPlayer players =
 
 
 drawGridRowFromGameState : GameState -> Int -> Html Msg
-drawGridRowFromGameState { gridSize, selectedPlayerIndex, players } rowIndex =
+drawGridRowFromGameState { gridSize, selectedPlayerIdentifier, players } rowIndex =
     List.range 1 gridSize
         |> List.map
             (\columnIndex ->
@@ -308,12 +321,14 @@ drawGridRowFromGameState { gridSize, selectedPlayerIndex, players } rowIndex =
                         )
                     |> drawGridCell
                         ( columnIndex, rowIndex )
-                        (selectedPlayerIndex
-                            |> Maybe.map (\index -> List.drop index players)
-                            |> Maybe.andThen List.head
-                            |> Maybe.map .location
-                            |> Maybe.map ((==) ( columnIndex, rowIndex ))
-                            |> withDefault False
+                        (players
+                            |> List.filter (.location >> (==) ( columnIndex, rowIndex ))
+                            |> List.any
+                                (\player ->
+                                    selectedPlayerIdentifier
+                                        |> Maybe.map ((==) player.identifier)
+                                        |> withDefault False
+                                )
                         )
             )
         |> styled div
