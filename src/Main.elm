@@ -67,7 +67,26 @@ update msg gameState =
             { gameState | gridSize = gameState.gridSize + 1 }
 
         GridDecrement ->
-            { gameState | gridSize = gameState.gridSize - 1 }
+            let
+                newGridSize =
+                    gameState.gridSize - 1
+
+                clampPlayerLocations : List Player -> List Player
+                clampPlayerLocations =
+                    List.map
+                        (\player ->
+                            { player
+                                | location =
+                                    player.location
+                                        |> Tuple.mapFirst (clamp 1 newGridSize)
+                                        |> Tuple.mapSecond (clamp 1 newGridSize)
+                            }
+                        )
+            in
+            { gameState
+                | gridSize = newGridSize
+                , players = clampPlayerLocations gameState.players --TODO If multple players end up at the same location, choose a victor and remove the others.
+            }
 
         SelectPlayer identifier ->
             { gameState | selectedPlayerIdentifier = Just identifier }
