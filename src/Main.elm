@@ -202,6 +202,18 @@ drawPlayersControl { players, selectedPlayerIdentifier } =
                             [ "Player"
                             , String.fromInt <| player.identifier
                             , ":"
+                            , case player.facing of
+                                North ->
+                                    String.fromChar '⇧'
+
+                                East ->
+                                    String.fromChar '⇨'
+
+                                South ->
+                                    String.fromChar '⇩'
+
+                                West ->
+                                    String.fromChar '⇦'
                             , "("
                             , String.fromInt << Tuple.first <| player.location
                             , ","
