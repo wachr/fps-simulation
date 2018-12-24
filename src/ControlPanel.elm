@@ -101,54 +101,56 @@ drawPlayersControl { players, selectedPlayerIdentifier } =
             []
           <|
             List.intersperse (styled br [] [] []) <|
-                List.map
-                    (\player ->
-                        String.join " "
-                            [ "Player"
-                            , String.fromInt <| player.identifier
-                            , ":"
-                            , case player.facing of
-                                North ->
-                                    String.fromChar '⇧'
-
-                                East ->
-                                    String.fromChar '⇨'
-
-                                South ->
-                                    String.fromChar '⇩'
-
-                                West ->
-                                    String.fromChar '⇦'
-                            , "("
-                            , String.fromInt << Tuple.first <| player.location
-                            , ","
-                            , String.fromInt << Tuple.second <| player.location
-                            , ")"
-                            ]
-                            |> text
-                            |> List.singleton
-                            |> styled span
-                                (selectedPlayerIdentifier
-                                    |> Maybe.andThen (maybeFilter ((==) player.identifier))
-                                    |> Maybe.map (\_ -> [ Css.property "background-color" "Gold" ])
-                                    |> withDefault []
-                                )
-                                (selectedPlayerIdentifier
-                                    |> Maybe.andThen (maybeFilter ((==) player.identifier))
-                                    |> Maybe.map (\_ -> DeselectPlayer)
-                                    |> withDefault (SelectPlayer player.identifier)
-                                    |> onClick
-                                    |> List.singleton
-                                )
-                    )
-                    (List.sortBy .identifier players)
+                List.map (drawPlayerInfo selectedPlayerIdentifier) <|
+                    List.sortBy .identifier players
         ]
 
 
-maybeFilter : (a -> Bool) -> a -> Maybe a
-maybeFilter predicate operand =
+filterBy : (a -> Bool) -> a -> Maybe a
+filterBy predicate operand =
     if predicate operand then
         Just operand
 
     else
         Nothing
+
+
+drawPlayerInfo : Maybe Int -> Player -> Html Msg
+drawPlayerInfo selectedPlayerIdentifier player =
+    String.join " "
+        [ "Player"
+        , String.fromInt <| player.identifier
+        , ":"
+        , case player.facing of
+            North ->
+                String.fromChar '⇧'
+
+            East ->
+                String.fromChar '⇨'
+
+            South ->
+                String.fromChar '⇩'
+
+            West ->
+                String.fromChar '⇦'
+        , "("
+        , String.fromInt << Tuple.first <| player.location
+        , ","
+        , String.fromInt << Tuple.second <| player.location
+        , ")"
+        ]
+        |> text
+        |> List.singleton
+        |> styled span
+            (selectedPlayerIdentifier
+                |> Maybe.andThen (filterBy ((==) player.identifier))
+                |> Maybe.map (\_ -> [ Css.property "background-color" "Gold" ])
+                |> withDefault []
+            )
+            (selectedPlayerIdentifier
+                |> Maybe.andThen (filterBy ((==) player.identifier))
+                |> Maybe.map (\_ -> DeselectPlayer)
+                |> withDefault (SelectPlayer player.identifier)
+                |> onClick
+                |> List.singleton
+            )
