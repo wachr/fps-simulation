@@ -6,3 +6,4 @@ type Msg
     | GridDecrement
     | SelectPlayer Int
     | DeselectPlayer
+    | RotateClockwise

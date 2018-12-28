@@ -19,6 +19,7 @@ import Messages exposing (..)
 import Models exposing (..)
 import Svg.Styled as Svg exposing (Svg, svg)
 import Svg.Styled.Attributes as Svg
+import Utilities exposing (..)
 
 
 drawControlPanelView : GameState -> Html Msg
@@ -100,19 +101,18 @@ drawPlayersControl { players, selectedPlayerIdentifier } =
             ]
             []
           <|
-            List.intersperse (styled br [] [] []) <|
+            (List.intersperse (styled br [] [] []) <|
                 List.map (drawPlayerInfo selectedPlayerIdentifier) <|
                     List.sortBy .identifier players
+            )
+                ++ (selectedPlayerIdentifier
+                        |> Maybe.map
+                            (\s ->
+                                [ styled button [ Css.property "background-color" "green" ] [ onClick RotateClockwise ] [ text "Turn" ] ]
+                            )
+                        |> Maybe.withDefault []
+                   )
         ]
-
-
-filterBy : (a -> Bool) -> a -> Maybe a
-filterBy predicate operand =
-    if predicate operand then
-        Just operand
-
-    else
-        Nothing
 
 
 drawPlayerInfo : Maybe Int -> Player -> Html Msg

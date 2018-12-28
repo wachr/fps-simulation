@@ -10,6 +10,7 @@ import List
 import Messages exposing (..)
 import Models exposing (..)
 import Simulation exposing (..)
+import Utilities exposing (..)
 
 
 main =
@@ -61,6 +62,38 @@ update msg gameState =
 
         DeselectPlayer ->
             { gameState | selectedPlayerIdentifier = Nothing }
+
+        RotateClockwise ->
+            rotateSelectedPlayerClockwise gameState
+
+
+rotateSelectedPlayerClockwise : GameState -> GameState
+rotateSelectedPlayerClockwise gameState =
+    let
+        playersWithRotatedPlayer =
+            List.map rotateSelected gameState.players
+
+        rotateSelected player =
+            gameState.selectedPlayerIdentifier
+                |> Maybe.andThen (filterBy ((==) player.identifier))
+                |> Maybe.map (\_ -> { player | facing = faceClockwise player.facing })
+                |> Maybe.withDefault player
+
+        faceClockwise facing =
+            case facing of
+                North ->
+                    East
+
+                East ->
+                    South
+
+                South ->
+                    West
+
+                West ->
+                    North
+    in
+    { gameState | players = playersWithRotatedPlayer }
 
 
 view : GameState -> Html Msg
