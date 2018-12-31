@@ -1,9 +1,12 @@
 module Messages exposing (Msg(..))
 
+import Models exposing (..)
+
 
 type Msg
     = GridIncrement
     | GridDecrement
     | SelectPlayer Int
     | DeselectPlayer
-    | RotateClockwise
+    | UpdatePlayer Player
+    | FaceRandom

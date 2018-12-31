@@ -108,7 +108,11 @@ drawPlayersControl { players, selectedPlayerIdentifier } =
                 ++ (selectedPlayerIdentifier
                         |> Maybe.map
                             (\s ->
-                                [ styled button [ Css.property "background-color" "green" ] [ onClick RotateClockwise ] [ text "Turn" ] ]
+                                [ styled button
+                                    [ Css.property "background-color" "green" ]
+                                    [ onClick FaceRandom ]
+                                    [ text "Turn" ]
+                                ]
                             )
                         |> Maybe.withDefault []
                    )

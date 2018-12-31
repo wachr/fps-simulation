@@ -1,6 +1,5 @@
 module Models exposing (Facing(..), GameState, Player, makePlayer)
 
-import Messages exposing (..)
 
 type Facing
     = North
@@ -9,14 +8,18 @@ type Facing
     | South
 
 
+type alias PlayerId =
+    Int
+
+
 type alias Player =
-    { location : ( Int, Int ), facing : Facing, identifier : Int }
+    { location : ( Int, Int ), facing : Facing, identifier : PlayerId }
 
 
 type alias GameState =
     { gridSize : Int
     , players : List Player
-    , selectedPlayerIdentifier : Maybe Int
+    , selectedPlayerIdentifier : Maybe PlayerId
     }
 
 

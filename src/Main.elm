@@ -1,7 +1,7 @@
 module FpsSimulation exposing (main, view)
 
 import Browser
-import ControlPanel exposing (..)
+import ControlPanel
 import Css exposing (pct, vh)
 import Css.Global exposing (body, global)
 import Debug
@@ -9,31 +9,35 @@ import Html.Styled exposing (Html, div, styled, toUnstyled)
 import List
 import Messages exposing (..)
 import Models exposing (..)
-import Simulation exposing (..)
+import Random
+import Simulation
 import Utilities exposing (..)
 
 
 main =
-    Browser.sandbox
+    Browser.element
         { init = init
-        , update = update
         , view = view >> toUnstyled
+        , update = update
+        , subscriptions = \_ -> Sub.none
         }
 
 
-init : GameState
-init =
-    { gridSize = 3
-    , players = makePlayer ( 1, 1 ) West <| makePlayer ( 3, 2 ) North []
-    , selectedPlayerIdentifier = Nothing
-    }
+init : () -> ( GameState, Cmd a )
+init _ =
+    ( { gridSize = 3
+      , players = makePlayer ( 1, 1 ) West <| makePlayer ( 3, 2 ) North []
+      , selectedPlayerIdentifier = Nothing
+      }
+    , Cmd.none
+    )
 
 
-update : Msg -> GameState -> GameState
+update : Msg -> GameState -> ( GameState, Cmd Msg )
 update msg gameState =
     case msg of
         GridIncrement ->
-            { gameState | gridSize = gameState.gridSize + 1 }
+            ( { gameState | gridSize = gameState.gridSize + 1 }, Cmd.none )
 
         GridDecrement ->
             let
@@ -52,48 +56,58 @@ update msg gameState =
                             }
                         )
             in
-            { gameState
+            ( { gameState
                 | gridSize = newGridSize
                 , players = clampPlayerLocations gameState.players --TODO If multple players end up at the same location, choose a victor and remove the others.
-            }
+              }
+            , Cmd.none
+            )
 
         SelectPlayer identifier ->
-            { gameState | selectedPlayerIdentifier = Just identifier }
+            ( { gameState | selectedPlayerIdentifier = Just identifier }, Cmd.none )
 
         DeselectPlayer ->
-            { gameState | selectedPlayerIdentifier = Nothing }
+            ( { gameState | selectedPlayerIdentifier = Nothing }, Cmd.none )
 
-        RotateClockwise ->
-            rotateSelectedPlayerClockwise gameState
+        UpdatePlayer newPlayer ->
+            ( updatePlayer gameState newPlayer, Cmd.none )
+
+        FaceRandom ->
+            ( gameState
+            , Random.generate
+                (\newFacing ->
+                    gameState.selectedPlayerIdentifier
+                        |> Maybe.map (\id -> List.filter (.identifier >> (==) id) gameState.players)
+                        |> Maybe.andThen List.head
+                        |> Maybe.withDefault (Player ( -1, -1 ) North -1)
+                        -- FIXME This is a hack relying on a player value we are pretty sure is not in the players list
+                        |> (\player -> { player | facing = newFacing })
+                        >> UpdatePlayer
+                )
+                randomFacing
+            )
 
 
-rotateSelectedPlayerClockwise : GameState -> GameState
-rotateSelectedPlayerClockwise gameState =
+randomFacing : Random.Generator Facing
+randomFacing =
+    Random.uniform North [ East, West, South ]
+
+
+updatePlayer : GameState -> Player -> GameState
+updatePlayer gameState player =
     let
-        playersWithRotatedPlayer =
-            List.map rotateSelected gameState.players
+        newPlayers =
+            List.map
+                (\p ->
+                    if p.identifier == player.identifier then
+                        player
 
-        rotateSelected player =
-            gameState.selectedPlayerIdentifier
-                |> Maybe.andThen (filterBy ((==) player.identifier))
-                |> Maybe.map (\_ -> { player | facing = faceClockwise player.facing })
-                |> Maybe.withDefault player
-
-        faceClockwise facing =
-            case facing of
-                North ->
-                    East
-
-                East ->
-                    South
-
-                South ->
-                    West
-
-                West ->
-                    North
+                    else
+                        p
+                )
+                gameState.players
     in
-    { gameState | players = playersWithRotatedPlayer }
+    { gameState | players = newPlayers }
 
 
 view : GameState -> Html Msg
@@ -107,6 +121,6 @@ view gameState =
                 , Css.backgroundSize (pct 100)
                 ]
             ]
-        , drawControlPanelView gameState
-        , drawSimulationView gameState
+        , ControlPanel.drawControlPanelView gameState
+        , Simulation.drawSimulationView gameState
         ]

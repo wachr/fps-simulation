@@ -11,17 +11,17 @@ module Simulation exposing
     )
 
 import Browser
-import Messages exposing (..)
 import Css exposing (auto, calc, em, minus, pct, px, rem, vh, vw, zero)
 import Css.Global exposing (body, global)
 import Debug
-import Models exposing (..)
 import Html
 import Html.Styled exposing (Html, br, button, div, fromUnstyled, h1, hr, span, styled, text, toUnstyled)
 import Html.Styled.Attributes as Html exposing (id)
 import Html.Styled.Events exposing (onClick)
 import List
 import Maybe exposing (Maybe(..), withDefault)
+import Messages exposing (..)
+import Models exposing (..)
 import Svg.Styled as Svg exposing (Svg, svg)
 import Svg.Styled.Attributes as Svg
 

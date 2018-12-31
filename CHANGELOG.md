@@ -6,8 +6,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-- Button to make the selected player face a random direction; visible only when
-  a player is selected.
 ### Changed
 - Make "selected player" functionality be a boolean on every Player object
   instead of a top-level field of GameState.
@@ -15,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 ### Fixed
 ### Security
+
+## [0.0.2] - 2018-12-31
+### Added
+- Button to make the selected player face a random direction; visible only when
+  a player is selected.
 
 ## [0.0.1] - 2018-12-22
 ### Added
